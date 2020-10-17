@@ -5,21 +5,27 @@ module.exports = async ({AMQP_URI, DOC_QUEUE, STATUS_QUEUE, FETCH_COUNT}) => {
   const conn = await connect(AMQP_URI)
   const ch = await conn.createChannel()
   await ch.assertQueue(STATUS_QUEUE)
+  await ch.assertQueue(DOC_QUEUE, {durable: true})
   return {
     length: async () => {
       const info = await ch.assertQueue(DOC_QUEUE, {durable: true})
       return info.messageCount
     },
     fetch: async (list) => {
-      let info = await ch.assertQueue(DOC_QUEUE, {durable: true})
-      const n = info.messageCount < FETCH_COUNT ? info.messageCount : FETCH_COUNT
-      for (let i = 0; i < n; i++) {
-        const msg = await ch.get(DOC_QUEUE, {noAck: true})
+      await ch.consume(DOC_QUEUE, async msg => {
         if (msg) {
-          list.insert(JSON.parse(msg.content.toString()))
+          try {
+            await list.insert(JSON.parse(msg.content.toString()))
+            ch.ack(msg)
+          } catch (err) {
+            ch.nack(msg)
+            throw err
+          }
         }
-      }
-      info = await ch.assertQueue(DOC_QUEUE, {durable: true})
+      }, {noAck: false})
+    },
+    check: async () => {
+      const info = await ch.assertQueue(DOC_QUEUE, {durable: true})
       if (info.messageCount == 0) { 
         ch.sendToQueue(STATUS_QUEUE, Buffer.from('DONE'))
       }

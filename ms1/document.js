@@ -12,6 +12,11 @@ function walk(el, cb) {
   }
 }
 
+async function getCurDoc(db) {
+  const docs = await db.collection('docs').find().sort({_id: -1}).limit(1).toArray()
+  return docs.length && docs[0]
+}
+
 module.exports = async ({DB_URI, AMQP_URI, DOC_QUEUE, STATUS_QUEUE}) => {
   const client = new MongoClient(DB_URI, {useNewUrlParser: true, useUnifiedTopology: true})
   try {
@@ -23,8 +28,8 @@ module.exports = async ({DB_URI, AMQP_URI, DOC_QUEUE, STATUS_QUEUE}) => {
     await ch.assertQueue(STATUS_QUEUE, {durable: true})
     return {
       isBusy: async () => {
-        const docs = await db.collection('docs').find().sort({_id: -1}).limit(1).toArray()
-        if (docs.length && !docs[0].done)
+        const doc = await getCurDoc(db)
+        if (doc && !doc.done)
           return true
         return false
       },
@@ -62,18 +67,18 @@ module.exports = async ({DB_URI, AMQP_URI, DOC_QUEUE, STATUS_QUEUE}) => {
         return d ? (d.done ? 'FINISHED' : 'PARSING') : 'UNKNOWN'
       },
       check: async () => {
-        const msg = await ch.get(STATUS_QUEUE, {noAck: false})
-        if (msg) {
-          if (msg.content.toString() == 'DONE') {
-            const docs = await db.collection('docs').find().sort({_id: -1}).limit(1).toArray()
-            if (docs.length && !docs[0].done) {
-              await db.collection('docs').updateOne({_id: docs[0]._id}, {$set: {done: true}})
+        await ch.consume(STATUS_QUEUE, async msg => {
+          if (msg) {
+            if (msg.content.toString() == 'DONE') {
+              const doc = await getCurDoc(db)
+              if (doc && !doc.done) {
+                await db.collection('docs').updateOne({_id: doc._id}, {$set: {done: true}})
+              }
+              ch.ack(msg)
+              return true
             }
-            ch.ack(msg)
-            return true
-          }
-        }
-        return false
+          }  
+        }, {noAck: false})
       }
     }
   } catch (err) {

@@ -8,9 +8,9 @@ let list
 
 const app = express()
 
-const fetch = async () => {
-  await queue.fetch(list)
-  setImmediate(fetch)
+const check = async () => {
+  await queue.check()
+  setImmediate(check)
 }
 
 app
@@ -25,5 +25,6 @@ app
 .listen(conf.PORT || 3002, async () => {
   queue = await q(conf)
   list = await l(conf)
-  fetch();
+  await check()
+  await queue.fetch(list);
 })
