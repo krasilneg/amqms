@@ -1,0 +1,12 @@
+{
+  "name": "amqpms1",
+  "version": "0.0.1",
+  "dependencies": {
+    "dotenv": "*",
+    "express": "*",
+    "xpath": "*",
+    "xmldom": "*",
+    "mongodb": "^3.6.2",
+    "amqplib": "^0.6.0"
+  }
+}
