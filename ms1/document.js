@@ -17,7 +17,7 @@ async function getCurDoc(db) {
   return docs.length && docs[0]
 }
 
-module.exports = async ({DB_URI, AMQP_URI, DOC_QUEUE, STATUS_QUEUE}) => {
+module.exports = async ({DB_URI, AMQP_URI, DOC_QUEUE, STATUS_QUEUE, EXCHANGE}) => {
   const client = new MongoClient(DB_URI, {useNewUrlParser: true, useUnifiedTopology: true})
   try {
     await client.connect()
@@ -57,7 +57,7 @@ module.exports = async ({DB_URI, AMQP_URI, DOC_QUEUE, STATUS_QUEUE}) => {
           })
         }
         for (msg of msgs) {
-          ch.sendToQueue(DOC_QUEUE, Buffer.from(JSON.stringify(msg)))
+          ch.publish(EXCHANGE || '', DOC_QUEUE, Buffer.from(JSON.stringify(msg)))
         }
         const d = await db.collection('docs').insertOne({done: false})
         return d.insertedId

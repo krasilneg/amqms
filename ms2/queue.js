@@ -1,6 +1,6 @@
 const { connect } = require('amqplib')
 
-module.exports = async ({AMQP_URI, DOC_QUEUE, STATUS_QUEUE, FETCH_COUNT}) => {
+module.exports = async ({AMQP_URI, DOC_QUEUE, STATUS_QUEUE, FETCH_COUNT, EXCHANGE}) => {
   FETCH_COUNT = FETCH_COUNT || 10
   const conn = await connect(AMQP_URI)
   const ch = await conn.createChannel()
@@ -27,7 +27,7 @@ module.exports = async ({AMQP_URI, DOC_QUEUE, STATUS_QUEUE, FETCH_COUNT}) => {
     check: async () => {
       const info = await ch.assertQueue(DOC_QUEUE, {durable: true})
       if (info.messageCount == 0) { 
-        ch.sendToQueue(STATUS_QUEUE, Buffer.from('DONE'))
+        ch.publish(EXCHANGE || '', STATUS_QUEUE, Buffer.from('DONE'))
       }
     }
   }

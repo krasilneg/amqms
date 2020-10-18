@@ -1,7 +1,8 @@
+require('dotenv').config()
 const express = require('express')
-const conf = require('dotenv').config().parsed
-q = require('./queue')
-l = require('./list')
+
+const q = require('./queue')
+const l = require('./list')
 
 let queue
 let list
@@ -22,9 +23,9 @@ app
   const result = await list.fetch(req.query.offset | 0, (req.query.count | 0) || 10)
   res.send(result)
 })
-.listen(conf.PORT || 3002, async () => {
-  queue = await q(conf)
-  list = await l(conf)
+.listen(process.env.PORT || 3002, async () => {
+  queue = await q(process.env)
+  list = await l(process.env)
   await check()
   await queue.fetch(list);
 })

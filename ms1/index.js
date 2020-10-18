@@ -1,12 +1,12 @@
+require('dotenv').config()
 const express = require('express')
-const conf = require('dotenv').config().parsed
 const app = express()
 const d = require('./document')
 
 let doc
 
 app
-.post('/', express.text({type: "application/xml", limit: conf.REQ_SIZE_LIMIT || "200mb"}), async (req, res) => {
+.post('/', express.text({type: "application/xml", limit: process.env.REQ_SIZE_LIMIT || "200mb"}), async (req, res) => {
   try {
     const busy = await doc.isBusy()
     if (busy) {
@@ -27,7 +27,7 @@ app
     res.status(500).send(err.message + '\n' + err.stack)
   }
 })
-.listen(conf.PORT || 3001, async () => {
-  doc = await d(conf)
+.listen(process.env.PORT || 3001, async () => {
+  doc = await d(process.env)
   await doc.check()
 })
